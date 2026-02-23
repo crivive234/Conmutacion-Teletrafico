@@ -139,25 +139,23 @@ La solicitud ARP va dirigida a la dirección **broadcast `ff:ff:ff:ff:ff:ff`**.
 
 Esto ocurre porque en el momento de la solicitud, contenedor1 no conoce la dirección
 MAC de contenedor2. Al no conocerla, debe preguntar a **todos los dispositivos**
-de la red al mismo tiempo: *"¿Quién tiene la IP 172.18.0.3? Dímelo a mí (172.18.0.2)"*.
-Todos los dispositivos reciben el mensaje, pero solo el que tenga esa IP responde.
+de la red al mismo tiempo. Todos los dispositivos reciben el mensaje, pero solo el que tenga esa IP responde.
 
 ### ¿La respuesta ARP es broadcast o unicast?
 
 La respuesta ARP es **unicast**.
 
 Una vez que contenedor2 recibe la solicitud broadcast y reconoce que la IP preguntada
-es la suya, responde directamente a la MAC de contenedor1 (que ya conoce gracias a
-la solicitud). No tiene sentido responder a todos, solo le interesa responderle
-a quien preguntó.
+es la suya, responde directamente a la MAC de contenedor1 que conoce gracias a
+la solicitud.
 
 ### ¿Por qué es necesario el ARP?
 
 El protocolo IP opera a nivel lógico usando direcciones IP, pero la comunicación
 real en una red local ocurre a nivel físico usando direcciones MAC. El hardware
-de red (tarjetas de red, switches) no entiende de IPs, solo de MACs.
+de red no entiende de IPs, solo de MACs.
 
-ARP es el puente entre estos dos mundos: cuando un dispositivo quiere enviar datos
+ARP es el puente entre estos dos mundos ya que cuando un dispositivo quiere enviar datos
 a una IP dentro de su misma red, necesita primero descubrir qué dirección MAC
 corresponde a esa IP. ARP resuelve esa pregunta mediante el intercambio de
 solicitud broadcast y respuesta unicast.
@@ -167,7 +165,7 @@ el paquete IP al destino correcto dentro de la red local.
 
 ### ¿Qué información se almacena en la caché ARP después del intercambio?
 
-Después del intercambio, el sistema operativo de contenedor1 almacena en su
+Después del intercambio, el contenedor1 almacena en su
 **tabla ARP** (caché ARP) la siguiente entrada:
 
 ```
@@ -183,14 +181,4 @@ Se puede consultar la tabla ARP dentro del contenedor con:
 arp -n
 # o
 ip neigh show
-```
-
----
-
-## Estructura de archivos
-
-```
-taller-docker/
-└── punto2/
-    └── README.md    ← Este archivo
 ```
