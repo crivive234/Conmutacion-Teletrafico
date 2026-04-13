@@ -1,8 +1,5 @@
 # 🌐 Ejercicio en Clase — Conmutación y Teletráfico
 
-> **Asignatura:** Conmutación y Teletráfico  
-> **Institución:** Fundación Universitaria Compensar  
-> **Docente:** Diego Alejandro Barragán Vargas  
 > **Tema:** Análisis de Tráfico de Red TCP vs UDP con YOLOv8
 
 ---
@@ -13,7 +10,6 @@
 - [Fase 2 — Tráfico UDP](#-fase-2--análisis-de-la-transmisión-de-video-tráfico-udp-en-tiempo-real)
 - [Fase 3 — Análisis con Wireshark](#-fase-3--análisis-forense-con-wireshark)
 - [Preguntas y Respuestas](#-preguntas-y-respuestas)
-- [Conclusiones](#-conclusiones)
 
 ---
 
@@ -260,68 +256,42 @@ Vista general de todo el tráfico UDP capturado, sin ningún overhead de control
 
 #### Características principales
 
-- **Una sola pasada (single forward pass):** Detecta todos los objetos en una imagen en una única inferencia, lo que lo hace extremadamente rápido
+- **Una sola pasada:** Detecta todos los objetos en una imagen en una única inferencia, lo que lo hace extremadamente rápido
 - **Velocidad en tiempo real:** Capaz de procesar entre 30 y 160+ FPS según la versión y el hardware disponible
-- **Visión global del contexto:** Al analizar la imagen completa, aprende relaciones espaciales entre objetos, reduciendo falsos positivos respecto a métodos de ventana deslizante
 - **Multitarea:** Detecta múltiples objetos de múltiples clases simultáneamente en la misma pasada
 - **Versatilidad (YOLOv8):** Soporta detección de objetos, segmentación de instancias, clasificación de imágenes y estimación de pose corporal en un solo framework
 
 #### Arquitectura de YOLOv8
 
-```
-  Imagen de entrada (ej. 640x640 px)
-           │
-           ▼
-  ┌─────────────────────────┐
-  │        BACKBONE         │
-  │   CSPDarknet + C2f      │  ← Extrae características visuales
-  │   (Conv + BN + SiLU)    │    Produce feature maps multi-escala:
-  │                         │    P3(80x80), P4(40x40), P5(20x20)
-  └────────────┬────────────┘
-               │
-               ▼
-  ┌─────────────────────────┐
-  │          NECK           │
-  │   PAN-FPN               │  ← Fusiona características de distintas
-  │   (Path Aggregation     │    resoluciones: detecta objetos
-  │    Feature Pyramid Net) │    grandes Y pequeños con precisión
-  └────────────┬────────────┘
-               │
-               ▼
-  ┌─────────────────────────┐
-  │          HEAD           │
-  │   Decoupled Detection   │  ← Dos ramas separadas:
-  │   Head                  │    · Regresión: (x, y, w, h)
-  │                         │    · Clasificación: clase del objeto
-  └────────────┬────────────┘
-               │
-               ▼
-      NMS (Non-Maximum Suppression)
-      Elimina detecciones duplicadas
-               │
-               ▼
-      Salida: [bbox, clase, confianza]
+```mermaid
+flowchart TD
+    A["🖼️ Imagen de entrada\n640×640 px"]
+
+    subgraph BB["BACKBONE"]
+        B["CSPDarknet + C2f\nConv · BN · SiLU\n───────────────\nP3 80×80 · P4 40×40 · P5 20×20"]
+    end
+
+    subgraph NK["NECK"]
+        C["PAN-FPN\nPath Aggregation Feature Pyramid Network\n───────────────\nFusiona escalas → objetos grandes y pequeños"]
+    end
+
+    subgraph HD["HEAD"]
+        D["Decoupled Detection Head\n───────────────\nRegresión (x, y, w, h) · Clasificación de clase"]
+    end
+
+    E["Non-Maximum Suppression\nElimina detecciones duplicadas"]
+    F["✅ Salida: bbox · clase · confianza"]
+
+    A --> BB --> NK --> HD --> E --> F
 ```
 
 ---
 
 ### Pregunta 2 — ¿Por qué la descarga usa TCP y la transmisión de video usa UDP?
 
-#### Comparativa de protocolos
-
-| Característica | TCP | UDP |
-|---|---|---|
-| Orientado a conexión | ✅ Sí (three-way handshake) | ❌ No (connectionless) |
-| Garantía de entrega | ✅ Sí (ACK + retransmisión) | ❌ No |
-| Control de flujo | ✅ Sí (sliding window) | ❌ No |
-| Orden de paquetes | ✅ Garantizado (números de secuencia) | ❌ No garantizado |
-| Velocidad | 🟡 Moderada (overhead de control) | ✅ Alta (header mínimo de 8 bytes) |
-| Latencia | 🟡 Mayor | ✅ Mínima |
-| Uso típico | Archivos, HTTPS, correo | Streaming, VoIP, gaming en vivo |
-
 #### ¿Por qué TCP para descargar el modelo?
 
-El archivo `yolov8n.pt` contiene los pesos serializados de una red neuronal (~6.2 MB). Si un solo byte llega corrupto o falta, el modelo no puede deserializarse. Las capturas de Wireshark confirman esto:
+El archivo `yolov8n.pt` contiene los pesos serializados de una red neuronal de aproximadamente (~6.2 MB). Si un solo byte llega corrupto o falta, el modelo no puede deserializarse. Las capturas de Wireshark confirman esto:
 
 - Se observó el **three-way handshake** completo antes de cualquier dato
 - Se detectaron **retransmisiones automáticas** (`tcp.analysis.retransmission`) que TCP corrigió sin intervención manual
@@ -370,7 +340,7 @@ TCP detectó la ausencia del ACK y reenvió el segmento automáticamente, asegur
 | Retransmisión tarda 150ms | Descarga 150ms más lenta (aceptable) | 4-5 frames perdidos de fluidez (inaceptable) |
 | 5% de pérdida | TCP recupera todo silenciosamente | Buffer acumulado → desincronización total |
 
-En una transmisión a 30 FPS, cada frame dura ~33ms. Una sola retransmisión introduce al menos 100–300ms de retraso — el equivalente a congelar la imagen durante 3 a 9 fotogramas consecutivos.
+En una transmisión a 30 FPS. Una sola retransmisión introduce al menos 100–300ms de retraso — el equivalente a congelar la imagen durante 3 a 9 fotogramas consecutivos.
 
 ---
 
@@ -421,6 +391,6 @@ Esto elimina del análisis todo tráfico irrelevante como DNS, NTP o las conexio
 
 <div align="center">
 
-**Fundación Universitaria Compensar** · Telecomunicaciones · 2025
+**Fundación Universitaria Compensar** · Telecomunicaciones · 2026-1
 
 </div>
