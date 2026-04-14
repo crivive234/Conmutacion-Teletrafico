@@ -265,24 +265,31 @@ Vista general de todo el tráfico UDP capturado, sin ningún overhead de control
 
 ```mermaid
 flowchart TD
-    A["🖼️ Imagen de entrada\n640×640 px"]
+    A([🖼️ Imagen de entrada\n640 × 640 px]) --> B
 
-    subgraph BB["BACKBONE"]
-        B["CSPDarknet + C2f\nConv · BN · SiLU\n───────────────\nP3 80×80 · P4 40×40 · P5 20×20"]
+    subgraph BACKBONE["🔷 BACKBONE — Extracción de características"]
+        B[Conv inicial\nConv + BN + SiLU] --> C[C2f Blocks\nCross-stage partial]
+        C --> D[SPPF\nSpatial Pyramid Pool]
     end
 
-    subgraph NK["NECK"]
-        C["PAN-FPN\nPath Aggregation Feature Pyramid Network\n───────────────\nFusiona escalas → objetos grandes y pequeños"]
+    D --> |"P3 · P4 · P5\nFeature maps multi-escala"| E
+
+    subgraph NECK["🔶 NECK — Fusión multi-escala"]
+        E[FPN\nTop-down: objetos pequeños] --> F[PAN\nBottom-up: objetos grandes]
     end
 
-    subgraph HD["HEAD"]
-        D["Decoupled Detection Head\n───────────────\nRegresión (x, y, w, h) · Clasificación de clase"]
+    F --> G & H
+
+    subgraph HEAD["🔴 HEAD — Predicción desacoplada"]
+        G[Regresión\nx, y, w, h]
+        H[Clasificación\nClase + confianza]
     end
 
-    E["Non-Maximum Suppression\nElimina detecciones duplicadas"]
-    F["✅ Salida: bbox · clase · confianza"]
+    G & H --> I([✅ NMS → Detecciones finales])
 
-    A --> BB --> NK --> HD --> E --> F
+    style BACKBONE fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    style NECK     fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    style HEAD     fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
 ```
 
 ---
@@ -357,7 +364,7 @@ Esto se confirmó visualmente en la captura con el filtro `tcp.port == 443`:
 
 ![Puerto 443 HTTPS](capturas/port_443.png)
 
-#### Filtros para aislar el tráfico con el servidor
+#### Filtros Adicionales para aislar el tráfico con el servidor
 
 ```wireshark
 # Todo el tráfico bidireccional con el servidor primario de GitHub
@@ -388,9 +395,3 @@ Al aplicar `ip.addr == 140.82.113.3 && tcp.port == 443`, Wireshark muestra exclu
 Esto elimina del análisis todo tráfico irrelevante como DNS, NTP o las conexiones internas de Colab al puerto 8080.
 
 ---
-
-<div align="center">
-
-**Fundación Universitaria Compensar** · Telecomunicaciones · 2026-1
-
-</div>

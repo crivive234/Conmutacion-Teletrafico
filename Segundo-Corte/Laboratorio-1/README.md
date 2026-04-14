@@ -42,8 +42,8 @@ Desde el símbolo del sistema de **PC-A** se ejecuta:
 ```
 tracert 209.165.200.226
 ```
+![PC-A Traza](/Segundo-Corte/Laboratorio-1/capturas/Traza_PC-A.png)
 
-> ✅ **Respuesta:**  
 > Los dispositivos en la ruta desde PC-A al servidor web son:  
 > **R1 → R2 → I-Net**  
 > *(PC-A usa R1 como gateway, luego el tráfico pasa por R2 y finalmente por I-Net hacia el servidor)*
@@ -57,8 +57,8 @@ Desde el símbolo del sistema de **PC-B** se ejecuta:
 ```
 tracert 209.165.200.226
 ```
+![PC-B Traza](/Segundo-Corte/Laboratorio-1/capturas/Traza_PC-B.png)
 
-> ✅ **Respuesta:**  
 > Los dispositivos en la ruta desde PC-B al servidor web son:  
 > **R3 → R2 → I-Net**  
 > *(PC-B usa R3 como gateway, luego el tráfico pasa por R2 y finalmente por I-Net hacia el servidor)*
@@ -68,17 +68,18 @@ tracert 209.165.200.226
 #### Paso 3 – Observar el comportamiento cuando R3 no está disponible
 
 **Procedimiento:**
-1. Se elimina el vínculo entre **R3** y **S3** usando la herramienta de eliminación de Packet Tracer.
+1. Se elimina el vínculo entre **R3** y **S3**
 2. Desde **PC-B** se ejecuta: `tracert 209.165.200.226`
-3. Se compara el resultado con el del Paso 2.
+
+![PC-B Traza](/Segundo-Corte/Laboratorio-1/capturas/enlace_caido.png)
 
 > ✅ **Respuesta:**  
 > El comando `tracert` **no puede determinar ninguna ruta** hacia el servidor web.  
 > Todos los saltos muestran tiempo de espera agotado (`* * *`), lo que indica que PC-B ha perdido completamente la conectividad hacia el exterior.  
 > A diferencia del Paso 2 (donde la ruta pasaba correctamente por R3), ahora **no existe ninguna ruta alternativa** para PC-B, ya que su único gateway configurado (R3) dejó de estar accesible.
 
-4. Se restablece el enlace: clic en **Connections** → seleccionar **Copper Straight-Through** → conectar **S3 GigabitEthernet0/2** con **R3 GigabitEthernet0/0**.
-5. Una vez que las luces del enlace estén en verde, se verifica con ping al servidor web → **el ping es exitoso**.
+3. Se restablece el enlace: No shutdown en la interfaz **R3 GigabitEthernet0/0**.
+4. Una vez que el enlace este UP, se verifica con ping al servidor web → **el ping es exitoso**.
 
 ---
 
@@ -154,7 +155,6 @@ GigabitEthernet0/1 - Group 1 (version 2)
   Priority 150 (configured 150)
   Group name is "hsrp-Gi0/1-1" (default)
 ```
-![R1 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R1.jpg)
 
 **En R3:**
 
@@ -179,12 +179,10 @@ GigabitEthernet0/0 - Group 1 (version 2)
   Group name is "hsrp-Gi0/0-1" (default)
 ```
 
-![R3 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R3.png)
-
 > ✅ **Respuestas basadas en la salida del comando:**
 >
 > **¿Cuál router es el router activo?**  
-> **R1** es el router activo (`State is Active` / `Active router is local`).
+> **R1** es el router activo
 >
 > **¿Cuál es la dirección MAC de la dirección IP virtual?**  
 > **0000.0C9F.F001** — es la MAC virtual compartida por ambos routers en el grupo HSRP.
@@ -269,18 +267,21 @@ tracert 209.165.200.226
 1. Eliminar el cable que conecta **R1** a **S1** usando la herramienta de eliminación de Packet Tracer.
 2. Inmediatamente volver a **PC-B** y ejecutar: `tracert 209.165.200.226`
 
+![Simular Falla R1](/Segundo-Corte/Laboratorio-1/capturas/enlace_caido2.png)
+
 > ✅ **Respuesta:**  
 > Al principio, el `tracert` muestra **tiempos de espera agotados** (`* * *`) mientras HSRP ejecuta su proceso de convergencia para determinar cuál router debe asumir el control.  
 > Una vez que el proceso finaliza, **R3 asume el rol de router activo** y la ruta pasa a ser:  
 > **R3 → R2 → I-Net**  
 > La diferencia principal es que este trace tarda más en completarse (tiempo de convergencia HSRP) y usa **R3** como primer salto, en lugar de R1 como ocurría antes.
 
+![PC-B Traza 2](/Segundo-Corte/Laboratorio-1/capturas/Traza_PC-B2.png)
 ---
 
 #### Paso 3 – Restaurar el enlace a R1
 
 **Procedimiento:**
-1. Reconectar **R1** a **S1** usando un cable **Copper Straight-Through**.
+1. Reconectar **R1** a **S1**
 2. Ejecutar nuevamente `tracert 209.165.200.226` desde PC-B.
 
 > ✅ **Respuestas:**
@@ -306,7 +307,6 @@ interface g0/1
  standby 1 preempt
 end
 ```
-![R1 Brief](/Segundo-Corte/Laboratorio-1/capturas/R1_Brief.png)
 
 ### Router R3
 ```
@@ -317,7 +317,6 @@ interface g0/0
  standby 1 ip 192.168.1.254
 end
 ```
-![R1 Brief](/Segundo-Corte/Laboratorio-1/capturas/R3_Brief.png)
 
 ### Switch S1
 ```
@@ -339,21 +338,3 @@ end
 Cambiar la puerta de enlace predeterminada a: **`192.168.1.254`**
 
 ---
-
-## ✅ Resumen de Respuestas
-
-| # | Pregunta | Respuesta |
-|---|---|---|
-| 1 | Ruta desde PC-A al servidor web (antes de HSRP) | **R1 → R2 → I-Net** |
-| 2 | Ruta desde PC-B al servidor web (antes de HSRP) | **R3 → R2 → I-Net** |
-| 3 | ¿Qué ocurre cuando R3 no está disponible (sin HSRP)? | PC-B pierde toda conectividad; el tracert no encuentra ruta (`* * *`) |
-| 4 | Prioridad HSRP de R3 al unirse al grupo 1 | **100** (valor por defecto) |
-| 5 | ¿Cuál es el router activo? | **R1** |
-| 6 | Dirección MAC de la IP virtual | **0000.0C9F.F001** |
-| 7 | IP y prioridad del router en espera | IP: **192.168.1.3** — Prioridad: **100** |
-| 8 | Gateway que deben usar los hosts tras configurar HSRP | **192.168.1.254** |
-| 9 | ¿Los pings son exitosos tras el cambio de gateway? | **Sí** |
-| 10 | ¿La ruta de PC-B cambia tras configurar HSRP? | **Sí**, ahora pasa por R1 en vez de R3 |
-| 11 | ¿Cómo difiere el trace al desconectar R1? | Tiempo de espera inicial → luego ruta por **R3 → R2 → I-Net** |
-| 12 | Ruta al restaurar R1 | Vuelve a pasar por **R1 → R2 → I-Net** (gracias a `preempt`) |
-| 13 | ¿Mismo resultado sin `preempt` configurado en R1? | **No**, R1 no recuperaría el rol activo automáticamente |
