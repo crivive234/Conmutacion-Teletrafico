@@ -2,7 +2,6 @@
 
 ## 📋 Descripción
 
-Esta actividad forma parte del curso **CCNA 2 v7 – SRWE** de Cisco Networking Academy.  
 Se trabaja la configuración del protocolo **HSRP (Hot Standby Router Protocol)**, que pertenece a la familia **FHRP** (*First Hop Redundancy Protocols*) y permite ofrecer **puertas de enlace predeterminadas redundantes** a los hosts de una LAN, garantizando conectividad continua ante la falla de un router gateway.
 
 ---
@@ -23,7 +22,7 @@ Se trabaja la configuración del protocolo **HSRP (Hot Standby Router Protocol)*
 
 ## 📊 Tabla de Asignación de Direcciones
 
-![Direcciones](/Segundo-Corte/Laboratorio-1/capturas/Direcciones.png.png)
+![Direcciones](/Segundo-Corte/Laboratorio-1/capturas/Direcciones.png)
 
 
 > **Nota:** El router I-Net está presente en la nube de Internet y no se puede acceder en esta actividad.
@@ -135,7 +134,6 @@ R3(config-if)# end
 #### Paso 3 – Verificar la configuración HSRP
 
 **En R1:**
-![R1 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R1.jpg)
 
 ```bash
 R1# show standby
@@ -156,9 +154,9 @@ GigabitEthernet0/1 - Group 1 (version 2)
   Priority 150 (configured 150)
   Group name is "hsrp-Gi0/1-1" (default)
 ```
+![R1 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R1.jpg)
 
 **En R3:**
-![R3 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R3.png)
 
 ```bash
 R3# show standby
@@ -180,6 +178,8 @@ GigabitEthernet0/0 - Group 1 (version 2)
   Priority 100 (default 100)
   Group name is "hsrp-Gi0/0-1" (default)
 ```
+
+![R3 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R3.png)
 
 > ✅ **Respuestas basadas en la salida del comando:**
 >
