@@ -17,13 +17,13 @@ Se trabaja la configuración del protocolo **HSRP (Hot Standby Router Protocol)*
 
 ## 🗺️ Topología de Red
 
-[Topología](/Segundo-Corte/Laboratorio-1/capturas/Topologia.png)
+![Topología](/Segundo-Corte/Laboratorio-1/capturas/Topologia.png)
 
 ---
 
 ## 📊 Tabla de Asignación de Direcciones
 
-[Direcciones](/Segundo-Corte/Laboratorio-1/capturas/Direcciones.png.png)
+![Direcciones](/Segundo-Corte/Laboratorio-1/capturas/Direcciones.png.png)
 
 
 > **Nota:** El router I-Net está presente en la nube de Internet y no se puede acceder en esta actividad.
@@ -97,8 +97,6 @@ R1(config-if)# standby 1 priority 150
 R1(config-if)# standby 1 preempt
 R1(config-if)# end
 ```
-[R1 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R1.jpg)
-
 
 **Explicación de cada comando:**
 
@@ -129,8 +127,6 @@ R3(config-if)# standby version 2
 R3(config-if)# standby 1 ip 192.168.1.254
 R3(config-if)# end
 ```
-[Fundacion Universitaria Compensar](/Segundo-Corte/Laboratorio-1/capturas/R3.png)
-
 
 > **Nota:** La interfaz usada en R3 es **G0/0** (conectada a LAN 2 / S3), a diferencia de R1 que usa G0/1.
 
@@ -139,6 +135,7 @@ R3(config-if)# end
 #### Paso 3 – Verificar la configuración HSRP
 
 **En R1:**
+![R1 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R1.jpg)
 
 ```bash
 R1# show standby
@@ -161,6 +158,7 @@ GigabitEthernet0/1 - Group 1 (version 2)
 ```
 
 **En R3:**
+![R3 HSRP](/Segundo-Corte/Laboratorio-1/capturas/R3.png)
 
 ```bash
 R3# show standby
@@ -308,6 +306,7 @@ interface g0/1
  standby 1 preempt
 end
 ```
+![R1 Brief](/Segundo-Corte/Laboratorio-1/capturas/R1_Brief.png)
 
 ### Router R3
 ```
@@ -318,6 +317,7 @@ interface g0/0
  standby 1 ip 192.168.1.254
 end
 ```
+![R1 Brief](/Segundo-Corte/Laboratorio-1/capturas/R3_Brief.png)
 
 ### Switch S1
 ```

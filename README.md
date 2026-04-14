@@ -14,4 +14,4 @@
 - [Laboratorio 2](Segundo-Corte/Laboratorio-2/)
 - [Ejercicio en Clase](Segundo-Corte/Ejercicio-en-clase/)
 
-[Fundacion Universitaria Compensar](logo.png)
+![Fundacion Universitaria Compensar](logo.png)
