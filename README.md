@@ -13,5 +13,6 @@
 - [Laboratorio 1](Segundo-Corte/Laboratorio-1/)
 - [Laboratorio 2](Segundo-Corte/Laboratorio-2/)
 - [Ejercicio en Clase](Segundo-Corte/Ejercicio-en-clase/)
+- [Parcial #2](Segundo-Corte/segundo-parcial/README.md)
 
 ![Fundacion Universitaria Compensar](logo.png)
