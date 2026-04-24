@@ -31,15 +31,15 @@
 | Ethernet 5 | Adapter #2 | 192.168.147.1/24 | Cloud-SR2 → SubRed 2 |
 | Ethernet 6 | Adapter #3 | 192.168.74.1/24 | Cloud-Admin → trunk Admin VM |
 | Ethernet 7 | Adapter #4 | 192.168.252.1/24 | GNS3 VM (exclusivo) |
-| Ethernet 8 | Adapter #5 | 192.168.167.1/24 | SPAN → eth2 Admin VM (sin IP en VM) |
+| Ethernet 8 | Adapter #5 | 192.168.167.1/24 | SPAN → enp0s9 Admin VM (sin IP) |
 
 ### Tabla de IPs del laboratorio
 
 | Nodo | Tipo | SubRed | VLAN | IP | Gateway |
 |---|---|---|---|---|---|
-| Admin VM eth1.10 | Subinterfaz | 1 | 10 | 192.168.56.1/24 | — |
-| Admin VM eth1.20 | Subinterfaz | 2 | 20 | 192.168.147.1/24 | — |
-| Admin VM eth2 | SPAN | — | — | Sin IP (promiscuo) | — |
+| Admin VM enp0s8.10 | Subinterfaz | 1 | 10 | 192.168.56.1/24 | — |
+| Admin VM enp0s8.20 | Subinterfaz | 2 | 20 | 192.168.147.1/24 | — |
+| Admin VM enp0s9 | SPAN | — | — | Sin IP (promiscuo) | — |
 | GNS3 VM | VM Ubuntu | — | — | 192.168.252.100 | 192.168.252.1 |
 | Arch Linux VM | VM VirtualBox | 1 | 10 | 192.168.56.10/24 | 192.168.56.1 |
 | Rocky Linux VM | VM VirtualBox | 1 | 10 | 192.168.56.20/24 | 192.168.56.1 |
@@ -48,16 +48,39 @@
 | Alpine Container | Docker Desktop | 2 | 20 | 192.168.147.20/24 | 192.168.147.1 |
 | Kali Container | Docker Desktop | 2 | 20 | 192.168.147.30/24 | 192.168.147.1 |
 
-### Puertos del Switch IOU L2 (i86bi-linux-l2)
+### Nombres de interfaces de red en Debian (Admin VM)
+
+En VirtualBox las interfaces no se llaman `eth0/eth1/eth2` sino con la
+nomenclatura `enp0sX`. Para verificar los nombres reales ejecutar:
+
+```bash
+ip link show
+```
+
+El resultado típico en VirtualBox es:
+
+```
+1: lo          → loopback (ignorar)
+2: enp0s3      → Adaptador 1 — NAT (internet)
+3: enp0s8      → Adaptador 2 — Host-Only #3 (trunk al switch)
+4: enp0s9      → Adaptador 3 — Host-Only #5 (SPAN, sin IP)
+```
+
+> A lo largo de este README se usan los nombres `enp0s3`, `enp0s8` y `enp0s9`.
+> Si en tu equipo aparecen nombres distintos, reemplázalos en todos los comandos.
+
+### Puertos del Switch IOU L2
 
 | Puerto Switch | Modo | Conectado a | Propósito |
 |---|---|---|---|
-| e3/2 | Trunk (VLAN 10,20) | Cloud-Admin (Ethernet 6) | Admin VM eth1 |
+| e3/2 | Trunk (VLAN 10,20) | Cloud-Admin (Ethernet 6) | trunk Admin VM enp0s8 |
 | e0/1 | Access VLAN 10 | Cloud-SR1 (Ethernet 4) | SubRed 1 |
 | e0/2 | Access VLAN 20 | Cloud-SR2 (Ethernet 5) | SubRed 2 |
-| e0/3 | SPAN destino | Cloud-SPAN (Ethernet 8) | Admin VM eth2 captura |
+| e0/3 | SPAN destino | Cloud-SPAN (Ethernet 8) | Admin VM enp0s9 captura |
 
-> **Nota:** El switch IOU L2 usa notación `eX/Y` (Ethernet) en lugar de `gi0/X` (GigabitEthernet) de los switches físicos Cisco.
+> **Nota:** El switch IOU L2 usa notación `eX/Y` (Ethernet) en lugar de `gi0/X`
+> (GigabitEthernet). El SPAN se configura por interfaces físicas porque el IOU L2
+> no soporta SPAN basado en VLANs.
 
 ---
 
@@ -65,36 +88,34 @@
 
 ```
                     Admin VM — Debian (VirtualBox)
-                   eth1 → Ethernet 6 (192.168.74.x)
-                   eth2 → Ethernet 8 (sin IP, SPAN)
-                          │                │
-                    Cloud-Admin        Cloud-SPAN
-                    Ethernet 6         Ethernet 8
-                          │                │
-                        e3/2            e0/3
-                          │                │
-                       SW2960 IOU L2
-                       (GNS3 VM)
-                          │         │
-                        e0/1      e0/2
-                          │         │
-                     Cloud-SR1  Cloud-SR2
-                     Ethernet4  Ethernet5
-                   (192.168.56) (192.168.147)
-                          │         │
-              ┌───────────┤     ┌───┤
-         Arch Linux   Rocky   Ubuntu  Alpine  Kali
-         VM           Linux   VM      Cont.   Cont.
-         .56.10       VM      .147.10 .147.20 .147.30
-                      .56.20
-              Fedora Container
-              .56.30
-         (VirtualBox / Docker Desktop en Windows)
+                   enp0s3 → NAT (internet)
+                   enp0s8 → Ethernet 6 / Host-Only #3 (trunk)
+                   enp0s9 → Ethernet 8 / Host-Only #5 (SPAN, sin IP)
+                          │                   │
+                    Cloud-Admin           Cloud-SPAN
+                    Ethernet 6            Ethernet 8
+                          │                   │
+                        e3/2               e0/3
+                              SW2960 IOU L2
+                              (GNS3 VM)
+                          e0/1         e0/2
+                            │             │
+                       Cloud-SR1      Cloud-SR2
+                       Ethernet4      Ethernet5
+                     192.168.56.x   192.168.147.x
+                            │             │
+             ┌──────────────┤         ┌───┤
+        Arch Linux   Rocky Linux   Ubuntu   Alpine   Kali
+        VM           VM            VM       Cont.    Cont.
+        .56.10       .56.20        .147.10  .147.20  .147.30
+        Fedora Container
+        .56.30
+    (VirtualBox / Docker Desktop en Windows 11)
 ```
 
-### Nodos en GNS3 (solo estos 5)
+### Nodos en GNS3
 
-| Nodo GNS3 | Tipo | Interfaz asignada |
+| Nodo GNS3 | Tipo | Interfaz Windows |
 |---|---|---|
 | SW2960 | Switch IOU L2 | — |
 | Cloud-Admin | Cloud node | Ethernet 6 |
@@ -102,19 +123,17 @@
 | Cloud-SR2 | Cloud node | Ethernet 5 |
 | Cloud-SPAN | Cloud node | Ethernet 8 |
 
-Las VMs y contenedores **no aparecen en GNS3** — corren en VirtualBox y Docker Desktop de Windows y se conectan a través de los adaptadores Host-Only.
-
 ---
 
 ## 3. Paso 1 — Configuración del Switch IOU L2 en GNS3
 
-Iniciar el proyecto en GNS3 con la GNS3 VM corriendo. Hacer clic derecho sobre el switch → Console.
+Hacer clic derecho sobre el switch en GNS3 → Console.
 
 ```cisco
-! === PASO 1: Crear VLANs ===
 enable
 configure terminal
 
+! === PASO 1: Crear VLANs ===
 vlan 10
  name SUBRED_1
 vlan 20
@@ -145,11 +164,14 @@ interface ethernet 0/2
  no shutdown
 exit
 
-! === PASO 5: SPAN — espejo de ambas VLANs hacia e0/3 ===
-monitor session 1 source vlan 10,20 both
+! === PASO 5: SPAN por interfaces físicas ===
+! El IOU L2 no soporta SPAN basado en VLANs,
+! se configura desde las interfaces físicas de origen
+monitor session 1 source interface ethernet 0/1 both
+monitor session 1 source interface ethernet 0/2 both
 monitor session 1 destination interface ethernet 0/3
 
-! === PASO 6: IP de gestión del switch + SNMP ===
+! === PASO 6: IP de gestión y SNMP ===
 interface vlan 1
  ip address 192.168.56.100 255.255.255.0
  no shutdown
@@ -160,14 +182,14 @@ snmp-server community public RO
 snmp-server community private RW
 snmp-server location "Laboratorio_Compensar"
 snmp-server contact "admin@lab.com"
-snmp-server host 192.168.74.X public
+snmp-server host 192.168.74.1 public
 
-! === PASO 7: Guardar ===
+! === PASO 7: Guardar configuración ===
 end
 write memory
 ```
 
-### Verificación del switch
+### Verificación
 
 ```cisco
 show vlan brief
@@ -183,7 +205,7 @@ show running-config
 Abrir **PowerShell como Administrador**.
 
 ```powershell
-# Red Docker para SubRed 1 — mismo rango que Host-Only Adapter #1
+# Red Docker para SubRed 1
 docker network create `
   --driver bridge `
   --subnet 192.168.56.0/24 `
@@ -191,7 +213,7 @@ docker network create `
   --opt "com.docker.network.bridge.name"="br-vlan10" `
   vlan10_net
 
-# Red Docker para SubRed 2 — mismo rango que Host-Only Adapter #2
+# Red Docker para SubRed 2
 docker network create `
   --driver bridge `
   --subnet 192.168.147.0/24 `
@@ -199,24 +221,34 @@ docker network create `
   --opt "com.docker.network.bridge.name"="br-vlan20" `
   vlan20_net
 
-# Verificar redes creadas
+# Verificar
 docker network ls
-docker network inspect vlan10_net
-docker network inspect vlan20_net
 ```
-
-> **Nota importante:** Docker Desktop en Windows crea un adaptador virtual para cada red bridge. El rango 192.168.56.0/24 coincide con el Host-Only Adapter #1, por lo que Windows puede enrutar tráfico entre contenedores Docker y las VMs de VirtualBox en la misma subred. Si Docker muestra conflicto de subred, verificar en Docker Desktop → Settings → Resources → Network que no haya rangos solapados predefinidos.
 
 ---
 
 ## 5. Paso 3 — Admin VM Debian
 
-La VM Debian en VirtualBox debe tener **tres adaptadores** configurados:
-- **Adaptador 1:** NAT → `eth0` (internet)
-- **Adaptador 2:** Host-Only Adapter #3 → `eth1` (trunk al switch e3/2)
-- **Adaptador 3:** Host-Only Adapter #5 → `eth2` (SPAN, sin IP)
+La VM Debian en VirtualBox debe tener **tres adaptadores**:
+- **Adaptador 1:** NAT → `enp0s3` (internet)
+- **Adaptador 2:** Host-Only Adapter #3 → `enp0s8` (trunk al switch e3/2)
+- **Adaptador 3:** Host-Only Adapter #5 → `enp0s9` (SPAN, sin IP)
 
-### 5.1 Instalación de paquetes
+### 5.1 Verificar nombres de interfaces
+
+```bash
+ip link show
+```
+
+Resultado esperado:
+```
+1: lo: <LOOPBACK>
+2: enp0s3: <BROADCAST>    ← NAT
+3: enp0s8: <BROADCAST>    ← trunk al switch
+4: enp0s9: <BROADCAST>    ← SPAN
+```
+
+### 5.2 Instalación de paquetes
 
 ```bash
 sudo apt update && sudo apt upgrade -y
@@ -232,59 +264,69 @@ sudo apt install -y \
   net-tools tcpdump
 ```
 
-### 5.2 Configuración trunk 802.1q y subinterfaces VLAN
+### 5.3 Configuración de interfaces de red
 
 ```bash
 # Cargar módulo 802.1q
 sudo modprobe 8021q
 echo "8021q" | sudo tee -a /etc/modules
-
-# Verificar nombre real de la interfaz
-ip link show
-# Buscar la interfaz conectada al Adapter #3
-# Puede llamarse eth1, enp0s8, etc. Ajustar según corresponda
 ```
 
-Editar `/etc/network/interfaces`:
-
+Editar el archivo de interfaces:
 ```bash
 sudo nano /etc/network/interfaces
 ```
 
-Agregar al final:
-
+Contenido completo del archivo:
 ```
-# Interfaz física trunk (conectada a Host-Only Adapter #3)
-auto eth1
-iface eth1 inet manual
-    up ip link set $IFACE up
+# Loopback
+auto lo
+iface lo inet loopback
+
+# Interfaz NAT — internet
+auto enp0s3
+iface enp0s3 inet dhcp
+
+# Interfaz trunk hacia switch GNS3
+auto enp0s8
+iface enp0s8 inet manual
+    up ip link set enp0s8 up
 
 # Subinterfaz VLAN 10 — Gateway SubRed 1
-auto eth1.10
-iface eth1.10 inet static
+auto enp0s8.10
+iface enp0s8.10 inet static
     address 192.168.56.1
     netmask 255.255.255.0
-    vlan-raw-device eth1
+    vlan-raw-device enp0s8
 
 # Subinterfaz VLAN 20 — Gateway SubRed 2
-auto eth1.20
-iface eth1.20 inet static
+auto enp0s8.20
+iface enp0s8.20 inet static
     address 192.168.147.1
     netmask 255.255.255.0
-    vlan-raw-device eth1
+    vlan-raw-device enp0s8
+
+# Interfaz SPAN — sin IP, modo promiscuo
+auto enp0s9
+iface enp0s9 inet manual
+    up ip link set enp0s9 up promisc on
+    down ip link set enp0s9 down
 ```
 
+Aplicar la configuración:
 ```bash
-# Aplicar configuración
-sudo ifup eth1
-sudo ifup eth1.10 eth1.20
+sudo ifup enp0s8
+sudo ifup enp0s8.10
+sudo ifup enp0s8.20
+sudo ifup enp0s9
 
 # Verificar
-ip addr show eth1.10
-ip addr show eth1.20
+ip addr show enp0s8.10
+ip addr show enp0s8.20
+ip link show enp0s9
 ```
 
-### 5.3 Habilitar IP forwarding
+### 5.4 Habilitar IP forwarding (router-on-a-stick)
 
 ```bash
 sudo sysctl -w net.ipv4.ip_forward=1
@@ -292,59 +334,35 @@ echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
 
 # Verificar
 sysctl net.ipv4.ip_forward
-```
-
-### 5.4 Configurar interfaz SPAN eth2 (sin IP, modo promiscuo)
-
-```bash
-# eth2 está conectada a Host-Only Adapter #5
-sudo ip link set eth2 up
-sudo ip addr flush dev eth2
-sudo ip link set eth2 promisc on
-
-# Persistir en /etc/network/interfaces
-sudo tee -a /etc/network/interfaces <<EOF
-
-# Interfaz SPAN — captura pasiva sin IP
-auto eth2
-iface eth2 inet manual
-    up ip link set \$IFACE up promisc on
-    down ip link set \$IFACE down
-EOF
+# Debe mostrar: net.ipv4.ip_forward = 1
 ```
 
 ### 5.5 Verificar conectividad
 
 ```bash
-# Desde Admin VM, hacer ping a los gateways de cada subred
 ping -c 3 192.168.56.1    # propio gateway SR1
 ping -c 3 192.168.147.1   # propio gateway SR2
-
-# Una vez que los nodos estén configurados
-ping -c 3 192.168.56.10   # Arch Linux
-ping -c 3 192.168.147.10  # Ubuntu
 ```
 
 ---
 
 ## 6. Paso 4 — Nodos SubRed 1
 
-Todos los nodos de SubRed 1 deben tener:
-- IP en rango 192.168.56.0/24
-- Gateway: 192.168.56.1
-- En VirtualBox: Adaptador Host-Only Adapter #1 (Ethernet 4)
-
 ### 6.1 Arch Linux VM (192.168.56.10)
 
-Adaptadores VirtualBox:
-- Adaptador 1: NAT → eth0
-- Adaptador 2: Host-Only Adapter #1 → eth1
+**Configuración VirtualBox:**
+- Adaptador 1: NAT
+- Adaptador 2: Host-Only Adapter #1 (Ethernet 4)
 
 ```bash
+# Verificar nombre de interfaz
+ip link show
+# La segunda interfaz es la Host-Only, puede ser enp0s8 o similar
+
 # Configurar IP estática con systemd-networkd
-sudo tee /etc/systemd/network/20-eth1.network <<EOF
+sudo tee /etc/systemd/network/20-hostonly.network <<EOF
 [Match]
-Name=eth1
+Name=enp0s8
 
 [Network]
 Address=192.168.56.10/24
@@ -353,12 +371,15 @@ DNS=8.8.8.8
 EOF
 
 sudo systemctl enable --now systemd-networkd
+sudo systemctl restart systemd-networkd
 
 # Verificar
-ip addr show eth1
+ip addr show enp0s8
 ping -c 3 192.168.56.1
+```
 
-# Instalar Zabbix Agent e iPerf3
+Instalar Zabbix Agent e iPerf3:
+```bash
 sudo pacman -Sy zabbix-agent iperf3
 
 # Configurar Zabbix Agent
@@ -371,17 +392,33 @@ sudo systemctl enable --now zabbix-agentd
 
 ### 6.2 Rocky Linux VM (192.168.56.20)
 
-Adaptadores VirtualBox: igual que Arch Linux.
+**Configuración VirtualBox:**
+- Adaptador 1: NAT
+- Adaptador 2: Host-Only Adapter #1 (Ethernet 4)
 
 ```bash
-# Configurar IP estática
-sudo nmcli con mod eth1 ipv4.addresses 192.168.56.20/24
-sudo nmcli con mod eth1 ipv4.gateway 192.168.56.1
-sudo nmcli con mod eth1 ipv4.dns 8.8.8.8
-sudo nmcli con mod eth1 ipv4.method manual
-sudo nmcli con up eth1
+# Verificar nombre de interfaz
+ip link show
 
-# Instalar Zabbix Agent
+# Configurar IP estática con nmcli
+# Reemplazar "Wired connection 1" por el nombre real de la conexión
+sudo nmcli con show
+
+sudo nmcli con mod "Wired connection 1" \
+  ipv4.addresses 192.168.56.20/24 \
+  ipv4.gateway 192.168.56.1 \
+  ipv4.dns 8.8.8.8 \
+  ipv4.method manual
+
+sudo nmcli con up "Wired connection 1"
+
+# Verificar
+ip addr show
+ping -c 3 192.168.56.1
+```
+
+Instalar Zabbix Agent e iPerf3:
+```bash
 sudo rpm -Uvh https://repo.zabbix.com/zabbix/6.4/rhel/9/x86_64/zabbix-release-6.4-1.el9.noarch.rpm
 sudo dnf install -y zabbix-agent iperf3
 
@@ -390,15 +427,14 @@ sudo sed -i 's/^ServerActive=.*/ServerActive=192.168.56.1/' /etc/zabbix/zabbix_a
 sudo sed -i 's/^Hostname=.*/Hostname=Rocky-Linux-VM/' /etc/zabbix/zabbix_agentd.conf
 
 sudo systemctl enable --now zabbix-agent
-
-# Verificar
-ping -c 3 192.168.56.1
 ```
 
 ### 6.3 Contenedor Fedora (192.168.56.30 — Docker Desktop Windows)
 
+La IP se asigna automáticamente al crear el contenedor:
+
 ```powershell
-# PowerShell — levantar contenedor Fedora en SubRed 1
+# PowerShell — crear contenedor Fedora en SubRed 1
 docker run -dit `
   --name fedora-subred1 `
   --network vlan10_net `
@@ -414,7 +450,7 @@ docker exec -it fedora-subred1 bash
 ```
 
 ```bash
-# Dentro del contenedor Fedora
+# Dentro del contenedor Fedora — instalar herramientas
 dnf install -y zabbix-agent iperf3 iproute iputils net-tools
 
 # Configurar Zabbix Agent
@@ -426,7 +462,8 @@ EOF
 
 zabbix_agentd
 
-# Verificar conectividad
+# Verificar IP asignada
+ip addr show
 ping -c 3 192.168.56.1
 ```
 
@@ -434,24 +471,24 @@ ping -c 3 192.168.56.1
 
 ## 7. Paso 5 — Nodos SubRed 2
 
-Todos los nodos de SubRed 2 deben tener:
-- IP en rango 192.168.147.0/24
-- Gateway: 192.168.147.1
-- En VirtualBox: Adaptador Host-Only Adapter #2 (Ethernet 5)
-
 ### 7.1 Ubuntu VM (192.168.147.10)
 
-Adaptadores VirtualBox:
-- Adaptador 1: NAT → eth0
-- Adaptador 2: Host-Only Adapter #2 → eth1
+**Configuración VirtualBox:**
+- Adaptador 1: NAT
+- Adaptador 2: Host-Only Adapter #2 (Ethernet 5)
 
 ```bash
+# Verificar nombre de interfaz
+ip link show
+# La segunda interfaz puede ser enp0s8, enp0s3, etc.
+
 # Configurar IP estática con netplan
-sudo tee /etc/netplan/01-eth1.yaml <<EOF
+# Reemplazar enp0s8 por el nombre real de la interfaz Host-Only
+sudo tee /etc/netplan/01-lab.yaml <<EOF
 network:
   version: 2
   ethernets:
-    eth1:
+    enp0s8:
       addresses:
         - 192.168.147.10/24
       routes:
@@ -463,7 +500,13 @@ EOF
 
 sudo netplan apply
 
-# Instalar Zabbix Agent e iPerf3
+# Verificar
+ip addr show enp0s8
+ping -c 3 192.168.147.1
+```
+
+Instalar Zabbix Agent e iPerf3:
+```bash
 wget https://repo.zabbix.com/zabbix/6.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.4-1+ubuntu22.04_all.deb
 sudo dpkg -i zabbix-release_6.4-1+ubuntu22.04_all.deb
 sudo apt update
@@ -474,9 +517,6 @@ sudo sed -i 's/^ServerActive=.*/ServerActive=192.168.147.1/' /etc/zabbix/zabbix_
 sudo sed -i 's/^Hostname=.*/Hostname=Ubuntu-VM/' /etc/zabbix/zabbix_agentd.conf
 
 sudo systemctl enable --now zabbix-agent
-
-# Verificar
-ping -c 3 192.168.147.1
 ```
 
 ### 7.2 Contenedor Alpine (192.168.147.20 — Docker Desktop Windows)
@@ -506,6 +546,7 @@ EOF
 zabbix_agentd -c /etc/zabbix/zabbix_agentd.conf
 
 # Verificar
+ip addr show
 ping -c 3 192.168.147.1
 ```
 
@@ -536,6 +577,7 @@ EOF
 zabbix_agentd
 
 # Verificar
+ip addr show
 ping -c 3 192.168.147.1
 ```
 
@@ -556,6 +598,7 @@ FLUSH PRIVILEGES;
 EXIT;
 SQL
 
+# Crear tabla de flujos
 sudo mysql -u pmacct -ppmacctpass pmacct_db <<'SQL'
 CREATE TABLE flows (
     stamp_inserted DATETIME,
@@ -571,11 +614,11 @@ CREATE TABLE flows (
 SQL
 ```
 
-### 8.2 Opción 1 — NetFlow v9 con softflowd (desde SPAN eth2)
+### 8.2 Opción 1 — NetFlow v9 con softflowd (desde SPAN enp0s9)
 
 ```bash
-# softflowd lee el tráfico espejado en eth2 y genera NetFlow v9
-sudo softflowd -i eth2 -v 9 -n 127.0.0.1:2055 -t maxlife=60 -b 2048
+# softflowd lee el tráfico espejado en enp0s9 y genera NetFlow v9
+sudo softflowd -i enp0s9 -v 9 -n 127.0.0.1:2055 -t maxlife=60 -b 2048
 
 # Servicio systemd para arranque automático
 sudo tee /etc/systemd/system/softflowd.service <<EOF
@@ -584,7 +627,7 @@ Description=softflowd NetFlow v9 generator
 After=network.target
 
 [Service]
-ExecStart=/usr/sbin/softflowd -i eth2 -v 9 -n 127.0.0.1:2055 -t maxlife=60 -b 2048
+ExecStart=/usr/sbin/softflowd -i enp0s9 -v 9 -n 127.0.0.1:2055 -t maxlife=60 -b 2048
 Restart=always
 
 [Install]
@@ -603,7 +646,7 @@ sudo tee /etc/pmacct/sflow_probe.conf <<EOF
 !
 daemonize: true
 pidfile: /var/run/pmacct_sflow.pid
-interface: eth2
+interface: enp0s9
 plugins: sflow
 sflow_target: 127.0.0.1:6343
 sflow_version: 5
@@ -621,7 +664,7 @@ sudo tee /etc/pmacct/ipfix_probe.conf <<EOF
 !
 daemonize: true
 pidfile: /var/run/pmacct_ipfix.pid
-interface: eth2
+interface: enp0s9
 plugins: nfprobe
 nfprobe_version: 10
 nfprobe_receiver: 127.0.0.1:4739
@@ -654,7 +697,7 @@ EOF
 
 sudo pmacctd -f /etc/pmacct/collector.conf
 
-# Verificar que está recibiendo flujos (después de generar tráfico)
+# Verificar flujos (después de generar tráfico)
 sudo mysql -u pmacct -ppmacctpass pmacct_db \
   -e "SELECT * FROM flows ORDER BY stamp_inserted DESC LIMIT 10;" --table
 ```
@@ -674,7 +717,7 @@ sudo apt install -y \
   zabbix-apache-conf zabbix-sql-scripts \
   zabbix-agent mariadb-server
 
-# Crear base de datos Zabbix
+# Crear base de datos
 sudo mysql -u root <<'SQL'
 CREATE DATABASE zabbix CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 CREATE USER 'zabbix'@'localhost' IDENTIFIED BY 'zabbixpass';
@@ -698,9 +741,9 @@ sudo systemctl enable --now zabbix-server zabbix-agent apache2
 sudo systemctl status zabbix-server
 ```
 
-### Configuración web
+### Configuración web Zabbix
 
-1. Abrir: `http://<IP_eth0_Admin>/zabbix`
+1. Abrir: `http://<IP_enp0s3_Admin>/zabbix`
 2. Login: `Admin` / `zabbix`
 3. Agregar hosts en **Configuration → Hosts → Create Host**:
 
@@ -727,27 +770,25 @@ sudo apt update && sudo apt install -y grafana
 
 sudo systemctl enable --now grafana-server
 
-# Verificar
+# Verificar que escucha en puerto 3000
 sudo ss -tlnp | grep 3000
-```
 
-### Acceso y fuentes de datos
-
-1. Abrir: `http://<IP_eth0_Admin>:3000`
-2. Login: `admin` / `admin`
-
-**Instalar plugin Zabbix:**
-```bash
+# Instalar plugin Zabbix
 sudo grafana-cli plugins install alexanderzobnin-zabbix-app
 sudo systemctl restart grafana-server
 ```
 
-**Fuente de datos MySQL (pmacct):**
+### Acceso y fuentes de datos
+
+1. Abrir: `http://<IP_enp0s3_Admin>:3000`
+2. Login: `admin` / `admin`
+
+**Fuente MySQL (pmacct):**
 - Host: `localhost:3306`
 - Database: `pmacct_db`
 - User: `pmacct` | Password: `pmacctpass`
 
-**Fuente de datos Zabbix:**
+**Fuente Zabbix:**
 - URL: `http://localhost/zabbix/api_jsonrpc.php`
 - User: `Admin` | Password: `zabbix`
 
@@ -809,17 +850,17 @@ iperf3 -c 192.168.147.10 -p 5201 -t 60 -i 5 -P 4
 ### Prueba UDP — Rocky Linux → Alpine (simulando streaming)
 
 ```bash
-# En Alpine Container
+# En Alpine Container (servidor)
 iperf3 -s -p 5202
 
-# En Rocky Linux VM — UDP 10 Mbps
+# En Rocky Linux VM (cliente) — UDP 10 Mbps
 iperf3 -c 192.168.147.20 -p 5202 -u -b 10M -t 60 -i 1
 ```
 
-### Verificar flujos en tiempo real
+### Verificar flujos capturados por pmacct
 
 ```bash
-# En Admin VM — ver flujos capturados por pmacct
+# En Admin VM
 sudo mysql -u pmacct -ppmacctpass pmacct_db \
   -e "SELECT stamp_inserted, src_host, dst_host, proto, bytes \
       FROM flows ORDER BY stamp_inserted DESC LIMIT 20;" --table
@@ -836,13 +877,13 @@ sudo dpkg-reconfigure wireshark-common   # Seleccionar Sí
 sudo usermod -aG wireshark $USER
 newgrp wireshark
 
-# Capturar en eth2 (interfaz SPAN — ve todo el tráfico del switch)
-sudo tshark -i eth2 \
+# Capturar en enp0s9 (interfaz SPAN — ve todo el tráfico del switch)
+sudo tshark -i enp0s9 \
   -f "host 192.168.56.10 or host 192.168.147.10" \
   -w /tmp/trafico_lab.pcap
 
-# Ver estadísticas por segundo durante captura
-sudo tshark -i eth2 -qz io,stat,1 -a duration:65
+# Estadísticas por segundo durante captura
+sudo tshark -i enp0s9 -qz io,stat,1 -a duration:65
 
 # Analizar protocolos de flujo en loopback
 sudo tshark -i lo -f "udp port 2055" -V | head -30   # NetFlow
@@ -858,39 +899,37 @@ sudo tshark -i lo -f "udp port 4739" -V | head -30   # IPFIX
 
 La arquitectura se construyó en seis capas sobre infraestructura híbrida (GNS3 + VirtualBox + Docker Desktop en Windows 11):
 
-**Capa 1 — Conmutación en GNS3:** Se emula un switch Cisco IOU L2 dentro de la GNS3 VM corriendo en VirtualBox. El switch tiene tres Cloud nodes que actúan como puentes hacia los adaptadores Host-Only de Windows: Cloud-Admin (Ethernet 6) conectado al puerto trunk e3/2, Cloud-SR1 (Ethernet 4) al puerto de acceso VLAN 10 e0/1, Cloud-SR2 (Ethernet 5) al puerto de acceso VLAN 20 e0/2, y Cloud-SPAN (Ethernet 8) al puerto espejo e0/3.
+**Capa 1 — Conmutación en GNS3:** Se emula un switch Cisco IOU L2 dentro de la GNS3 VM corriendo en VirtualBox. El switch tiene cuatro Cloud nodes que actúan como puentes hacia los adaptadores Host-Only de Windows: Cloud-Admin (Ethernet 6) conectado al puerto trunk e3/2, Cloud-SR1 (Ethernet 4) al puerto de acceso VLAN 10 e0/1, Cloud-SR2 (Ethernet 5) al puerto de acceso VLAN 20 e0/2, y Cloud-SPAN (Ethernet 8) al puerto espejo e0/3. El SPAN se configura por interfaces físicas (e0/1 y e0/2) porque el IOU L2 no soporta SPAN basado en VLANs.
 
-**Capa 2 — Enrutamiento inter-VLAN (router-on-a-stick):** La VM Admin Debian actúa como router entre subredes. Su interfaz eth1 se conecta al trunk del switch a través del adaptador Host-Only #3. Se crean dos subinterfaces VLAN: eth1.10 con IP 192.168.56.1 (gateway SubRed 1) y eth1.20 con IP 192.168.147.1 (gateway SubRed 2). Con IP forwarding habilitado, los nodos de diferentes VLANs pueden comunicarse pasando por el Admin VM.
+**Capa 2 — Enrutamiento inter-VLAN (router-on-a-stick):** La VM Admin Debian actúa como router entre subredes. Su interfaz enp0s8 se conecta al trunk del switch a través del adaptador Host-Only #3. Se crean dos subinterfaces VLAN: enp0s8.10 con IP 192.168.56.1 (gateway SubRed 1) y enp0s8.20 con IP 192.168.147.1 (gateway SubRed 2). Con IP forwarding habilitado, los nodos de diferentes VLANs se comunican pasando por el Admin VM.
 
-**Capa 3 — Nodos de red:** SubRed 1 (VLAN 10, 192.168.56.0/24) contiene Arch Linux y Rocky Linux como VMs en VirtualBox usando el adaptador Host-Only #1, y Fedora como contenedor Docker Desktop en una red bridge con el mismo rango de subred. SubRed 2 (VLAN 20, 192.168.147.0/24) contiene Ubuntu como VM y Alpine y Kali Linux como contenedores Docker Desktop.
+**Capa 3 — Nodos de red:** SubRed 1 (VLAN 10, 192.168.56.0/24) contiene Arch Linux y Rocky Linux como VMs en VirtualBox usando el adaptador Host-Only #1, y Fedora como contenedor Docker Desktop. SubRed 2 (VLAN 20, 192.168.147.0/24) contiene Ubuntu como VM y Alpine y Kali Linux como contenedores Docker Desktop.
 
-**Capa 4 — Captura de tráfico SPAN:** El switch espeja todo el tráfico de las VLANs 10 y 20 hacia el puerto e0/3, conectado al Cloud-SPAN (Ethernet 8). La VM Admin recibe ese tráfico en eth2 en modo promiscuo sin IP asignada. softflowd, pmacctd (sFlow) y nfprobe (IPFIX) leen de eth2 y generan registros de flujo hacia el colector pmacct local.
+**Capa 4 — Captura de tráfico SPAN:** El switch espeja el tráfico de los puertos e0/1 y e0/2 hacia e0/3, conectado al Cloud-SPAN (Ethernet 8). La VM Admin recibe ese tráfico en enp0s9 en modo promiscuo sin IP. softflowd, pmacctd (sFlow) y nfprobe (IPFIX) leen de enp0s9 y generan registros de flujo hacia el colector pmacct local.
 
-**Capa 5 — Recolección y almacenamiento:** pmacct actúa como colector central escuchando simultáneamente NetFlow v9 en puerto 2055, sFlow v5 en 6343 e IPFIX en 4739. Los flujos se almacenan en MySQL (base pmacct_db, tabla flows) con campos de src_host, dst_host, protocolo, puertos, bytes y paquetes.
+**Capa 5 — Recolección y almacenamiento:** pmacct actúa como colector central escuchando NetFlow v9 en 2055, sFlow v5 en 6343 e IPFIX en 4739 simultáneamente. Los flujos se almacenan en MySQL en la tabla flows.
 
-**Capa 6 — Monitoreo y visualización:** Zabbix Server recolecta métricas de sistema de los seis nodos mediante agentes instalados en cada uno. Grafana consolida ambas fuentes (MySQL y Zabbix) en un dashboard unificado con paneles de tráfico, conversaciones y métricas de sistema.
+**Capa 6 — Monitoreo y visualización:** Zabbix Server recolecta métricas de los seis nodos mediante agentes. Grafana consolida MySQL y Zabbix en un dashboard unificado con paneles de tráfico, conversaciones y métricas de sistema.
 
 ---
 
 ### Pregunta 2: ¿Cuál es la relevancia de NetFlow, sFlow e IPFIX?
 
-Los tres protocolos permiten realizar **teletráfico real** convirtiendo el tráfico de red en estadísticas analizables. Cada uno tiene enfoque diferente:
+**NetFlow v9:** Creado por Cisco, exporta estadísticas de cada flujo TCP/UDP. softflowd lo genera desde el tráfico capturado por SPAN en enp0s9. Permite conocer exactamente qué pares de hosts se comunican, cuántos bytes intercambian y qué protocolos usan. Es fundamental para calcular la intensidad de tráfico y detectar anomalías.
 
-**NetFlow v9:** Creado por Cisco, exporta estadísticas de cada flujo TCP/UDP procesado. En este laboratorio softflowd lo genera desde el tráfico capturado por SPAN. Permite conocer exactamente qué pares de hosts se comunican, cuántos bytes intercambian y qué protocolos usan. Es fundamental para calcular la intensidad de tráfico (erlangs de datos) y detectar anomalías de comportamiento en la red.
+**sFlow v5:** Trabaja por muestreo estadístico, tomando una muestra de cada N paquetes. Es más escalable para redes de alta velocidad. pmacctd como probe lee directamente de enp0s9. Representa la técnica usada en switches de alta gama donde procesar cada flujo individual sería computacionalmente prohibitivo.
 
-**sFlow v5:** Trabaja por muestreo estadístico. En lugar de procesar cada paquete, toma una muestra de cada N paquetes y la exporta al colector. Es más escalable para redes de alta velocidad. pmacctd como probe sFlow lee directamente de eth2. Es relevante porque representa la técnica usada en switches de alta gama donde procesar cada flujo individual sería prohibitivo computacionalmente.
+**IPFIX (RFC 7011):** Estandarización de NetFlow v9 por la IETF, independiente del fabricante. Garantiza interoperabilidad entre equipos de diferentes marcas. En entornos reales donde coexisten switches Cisco, Juniper y Huawei, todos pueden exportar al mismo colector usando el mismo protocolo estándar.
 
-**IPFIX (RFC 7011):** Es la estandarización de NetFlow v9 por la IETF, haciendo el protocolo independiente del fabricante. Garantiza interoperabilidad entre equipos de diferentes marcas. En el proyecto, nfprobe de pmacct genera IPFIX desde la captura SPAN. Es importante en entornos reales donde coexisten switches Cisco, Juniper, Huawei, etc., todos exportando al mismo colector con el mismo protocolo estándar.
-
-**Importancia conjunta:** Implementar los tres sobre la misma red permite comparar su granularidad, overhead de red generado y precisión de medición, dando una visión completa de las herramientas reales usadas en gestión de redes de producción.
+**Importancia conjunta:** Implementar los tres sobre la misma red permite comparar su granularidad, overhead y precisión de medición, dando una visión completa de las herramientas reales usadas en gestión de redes de producción.
 
 ---
 
 ### Pregunta 3: ¿Qué se obtiene con Wireshark? ¿Qué pasa cuando se ejecuta iPerf?
 
-**Con Wireshark capturando en eth2 (SPAN):** Al capturar en la interfaz SPAN se obtiene una copia exacta y pasiva de todo el tráfico de ambas VLANs sin interrumpir el flujo normal de datos. Se obtiene visibilidad completa de cabeceras L2 a L7, streams TCP/UDP completos, resolución ARP entre subredes, y los propios registros de flujo de NetFlow/sFlow/IPFIX circulando por el loopback. También permite medir latencia real entre hosts (RTT) y detectar retransmisiones TCP.
+**Con Wireshark capturando en enp0s9 (SPAN):** Se obtiene una copia exacta y pasiva de todo el tráfico de ambas VLANs sin interrumpir el flujo normal. Permite ver cabeceras completas L2-L7, streams TCP/UDP, resolución ARP entre subredes, y los registros de flujo NetFlow/sFlow/IPFIX circulando por el loopback. También permite medir latencia (RTT) y detectar retransmisiones TCP.
 
-**Cuando se ejecuta iPerf3:** En modo TCP, iPerf establece un handshake de tres vías visible en Wireshark (SYN → SYN-ACK → ACK) y luego satura el canal con segmentos TCP. Wireshark muestra el crecimiento de la ventana de congestión, los ACKs del receptor y eventuales retransmisiones. En modo UDP, iPerf envía datagramas a la tasa configurada sin control de flujo. Wireshark muestra todos los datagramas con sus números de secuencia propietarios de iPerf, y si hay congestión se observan gaps en la numeración. Simultáneamente, pmacct registra esos flujos en MySQL y Grafana actualiza los paneles de tráfico por segundo en tiempo real.
+**Cuando se ejecuta iPerf3 en modo TCP:** Se establece un handshake de tres vías visible en Wireshark (SYN → SYN-ACK → ACK) y luego satura el canal con segmentos TCP. Wireshark muestra el crecimiento de la ventana de congestión y los ACKs. En modo UDP, iPerf envía datagramas a la tasa configurada sin control de flujo. Wireshark muestra todos los datagramas y si hay congestión se observan gaps en la numeración de secuencia. Simultáneamente, pmacct registra esos flujos en MySQL y Grafana actualiza los paneles en tiempo real.
 
 ---
 
@@ -898,17 +937,17 @@ Los tres protocolos permiten realizar **teletráfico real** convirtiendo el trá
 
 | Aspecto | VM VirtualBox | Contenedor Docker |
 |---|---|---|
-| Tiempo de instalación | 20-45 minutos (instalador completo del SO) | 30 segundos - 2 minutos (docker pull) |
+| Tiempo de instalación | 20-45 minutos (instalador completo) | 30 segundos - 2 minutos (docker pull) |
 | Tamaño en disco | 5-20 GB | 100 MB - 2 GB |
 | Arranque | 30-90 segundos (boot completo) | Menos de 2 segundos |
 | Kernel | Kernel propio aislado | Comparte kernel del host (WSL2 en Windows) |
 | Proceso de instalación | Particiones, bootloader GRUB, /etc/fstab, systemd completo | No hay instalación: imagen pre-construida lista para usar |
-| Persistencia | Disco virtual persistente por defecto | Efímero por defecto; requiere volúmenes para persistir datos |
-| Configuración de red | Interfaz virtual independiente (eth0, eth1) participando en VLAN | Virtual bridge; integración con VLAN requiere configuración adicional |
+| Persistencia | Disco virtual persistente por defecto | Efímero por defecto; requiere volúmenes |
+| Configuración de red | Interfaz virtual independiente participando en VLAN | Virtual bridge; integración con VLAN requiere configuración adicional |
 | Consumo de RAM | 512 MB - 4 GB reservados | 10-200 MB adicionales por contenedor |
-| Observación práctica | Al instalar Arch Linux se ve el proceso completo: particionado con fdisk/cfdisk, instalación de base con pacstrap, generación de fstab, instalación de GRUB, configuración de red desde cero | Al hacer `docker run fedora:latest` el contenedor está disponible inmediatamente con el SO funcionando; no hay proceso de instalación, no hay GRUB, PID 1 es el proceso indicado en el CMD |
+| Observación práctica | Al instalar Arch Linux se ve el proceso completo: particionado, instalación de base con pacstrap, GRUB, configuración de red desde cero | Al hacer `docker run fedora:latest` el contenedor está disponible inmediatamente; no hay GRUB, PID 1 es el proceso indicado |
 
-**Conclusión práctica del laboratorio:** Las VMs simulan con mayor fidelidad equipos físicos reales (tienen su propio kernel, interfaz de red completa, participan directamente en las VLANs a través del adaptador Host-Only). Los contenedores son más eficientes y rápidos de desplegar pero requieren configuración adicional para integrarse en una topología de VLANs, ya que su networking se basa en bridges virtuales del host en lugar de adaptadores de red independientes.
+**Conclusión:** Las VMs simulan con mayor fidelidad equipos físicos reales con su propio kernel e interfaz de red independiente participando directamente en las VLANs. Los contenedores son más eficientes y rápidos de desplegar pero requieren configuración adicional para integrarse en una topología de VLANs, ya que su networking se basa en bridges virtuales del host.
 
 ---
 
