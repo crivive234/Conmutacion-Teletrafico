@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NetConverge // Console — preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg-0:#0a0a0b; --bg-1:#101013; --bg-2:#16161a; --bg-3:#1c1c21;
+  --border:#2a2a30; --border-hi:#3d3d45;
+  --fg-0:#f5f1e8; --fg-1:#c8c2b6; --fg-2:#8a8478; --fg-3:#555049;
+  --amber:#d4a373; --green:#7ab87a; --red:#c97064; --cyan:#6fa8a3;
+  --mono:'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg-0);color:var(--fg-0);
+  font-family:var(--mono);font-feature-settings:"tnum" 1;
+  -webkit-font-smoothing:antialiased;}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1000;
+  opacity:.025;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");}
+
+button{font-family:inherit;background:transparent;border:1px solid var(--border);
+  color:var(--fg-0);padding:8px 14px;cursor:pointer;text-transform:uppercase;
+  font-size:11px;letter-spacing:.08em;transition:border-color .12s,color .12s,background .12s;}
+button:hover{border-color:var(--amber);color:var(--amber)}
+button.primary{background:var(--amber);color:var(--bg-0);border-color:var(--amber);font-weight:600}
+button.primary:hover{background:var(--fg-0);border-color:var(--fg-0);color:var(--bg-0)}
+input,select{font-family:inherit;background:var(--bg-2);border:1px solid var(--border);
+  color:var(--fg-0);padding:7px 10px;font-size:13px;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--amber)}
+.label{text-transform:uppercase;font-size:10px;letter-spacing:.14em;color:var(--fg-2);font-weight:500}
+.divider{height:1px;background:var(--border);width:100%}
+.panel{background:var(--bg-1);border:1px solid var(--border)}
+.panel-head{display:flex;justify-content:space-between;align-items:center;
+  padding:10px 14px;border-bottom:1px solid var(--border)}
+.panel-body{padding:14px}
+
+/* --- top bar --- */
+.bar{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg-1);}
+.brand{display:flex;align-items:center;gap:14px;font-weight:600;letter-spacing:.04em}
+.mark{width:22px;height:22px;position:relative;border:1px solid var(--amber)}
+.mark>span{position:absolute;inset:4px;background:var(--amber)}
+.meta{display:flex;align-items:center;gap:24px;font-size:11px}
+.meta-item{color:var(--fg-2);text-transform:uppercase;letter-spacing:.1em}
+.meta-val{color:var(--fg-0);margin-left:8px}
+.dot{display:inline-block;width:8px;height:8px;background:var(--fg-3);
+  vertical-align:middle;margin-right:6px}
+.dot.live{background:var(--green);box-shadow:0 0 0 3px rgba(122,184,122,.18)}
+
+/* --- main grid --- */
+main{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:20px;padding:20px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.section-h{display:flex;justify-content:space-between;align-items:center;
+  padding-bottom:8px;border-bottom:1px solid var(--border)}
+.h-label{font-size:11px;letter-spacing:.16em;color:var(--fg-2);
+  text-transform:uppercase;font-weight:600}
+.h-meta{font-size:10px;color:var(--fg-3)}
+
+/* --- stream cards --- */
+.streams{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.card{background:var(--bg-1);border:1px solid var(--border);padding:18px;
+  display:flex;flex-direction:column;gap:14px}
+.card-head{display:flex;justify-content:space-between;align-items:baseline}
+.ssrc{font-size:11px;color:var(--fg-2);letter-spacing:.1em}
+.codec{font-size:10px;color:var(--fg-3);text-transform:uppercase}
+.band{font-size:10px;font-weight:600;padding:3px 8px;border:1px solid currentColor;letter-spacing:.12em}
+.mos-row{display:flex;align-items:flex-end;gap:12px}
+.mos{font-size:56px;font-weight:300;line-height:1;font-variant-numeric:tabular-nums}
+.mos-label{font-size:10px;color:var(--fg-2);letter-spacing:.12em;
+  text-transform:uppercase;padding-bottom:8px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  padding-top:8px;border-top:1px solid var(--border)}
+.m{display:flex;flex-direction:column;gap:3px}
+.m-label{font-size:9px;color:var(--fg-2);letter-spacing:.12em;text-transform:uppercase}
+.m-val{font-size:16px;font-weight:500;font-variant-numeric:tabular-nums}
+.m-unit{font-size:11px;color:var(--fg-2)}
+.bar-fill{position:relative;height:3px;background:var(--bg-3);overflow:hidden}
+.bar-fill>div{position:absolute;top:0;left:0;height:100%;
+  transition:width .4s ease,background .2s}
+
+/* --- event log --- */
+.log{overflow-y:auto;max-height:260px;font-size:11px;font-variant-numeric:tabular-nums}
+.log-row{display:grid;grid-template-columns:60px 18px 110px 1fr;
+  column-gap:10px;padding:6px 14px;
+  border-bottom:1px dashed var(--border);align-items:baseline}
+.log-ts{color:var(--fg-3)}
+.log-glyph{font-weight:700;text-align:center}
+.log-src{color:var(--fg-2);text-transform:uppercase;letter-spacing:.08em;font-size:10px}
+.log-msg{color:var(--fg-0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* --- config output --- */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full{grid-column:1 / -1}
+pre.out{margin-top:14px;padding:14px;background:var(--bg-0);
+  border:1px solid var(--border);font-size:12px;line-height:1.55;
+  white-space:pre;overflow:auto;max-height:340px;color:var(--green);
+  font-family:var(--mono)}
+
+/* --- ref panel --- */
+.ref{font-size:11px;line-height:1.7;color:var(--fg-1)}
+
+@media (max-width:980px){
+  main{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<div class="bar">
+  <div class="brand">
+    <div class="mark"><span></span></div>
+    <span>NETCONVERGE</span>
+    <span style="color:var(--fg-3);font-weight:400">// console</span>
+  </div>
+  <div class="meta">
+    <div class="meta-item">
+      <span class="dot live"></span><span class="meta-val">LINKED</span>
+    </div>
+    <div class="meta-item">UPTIME<span class="meta-val" id="uptime">00:00:00</span></div>
+    <div class="meta-item" id="time">--:--:-- UTC</div>
+  </div>
+</div>
+
+<main>
+  <!-- LEFT -->
+  <div class="col">
+    <div class="section-h">
+      <span class="h-label">Live RTP Streams</span>
+      <span class="h-meta">3 active · 1 Hz refresh · ITU-T G.107 / RFC 3550</span>
+    </div>
+
+    <div class="streams" id="streams"></div>
+
+    <div style="margin-top:8px">
+      <div class="section-h">
+        <span class="h-label">Event Log</span>
+        <span class="h-meta">severity · source · message</span>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="h-label">Configuration · Voice Access Port</span>
+      </div>
+      <div class="panel-body">
+        <div class="form-grid">
+          <div class="full">
+            <div class="label" style="margin-bottom:6px">Vendor</div>
+            <select id="vendor">
+              <option value="cisco_ios">Cisco IOS</option>
+              <option value="huawei_vrp">Huawei VRP</option>
+            </select>
+          </div>
+          <div class="full">
+            <div class="label" style="margin-bottom:6px">Interface</div>
+            <input id="iface" value="GigabitEthernet0/1" />
+          </div>
+          <div>
+            <div class="label" style="margin-bottom:6px">Data VLAN</div>
+            <input id="dvlan" type="number" value="10" />
+          </div>
+          <div>
+            <div class="label" style="margin-bottom:6px">Voice VLAN</div>
+            <input id="vvlan" type="number" value="20" />
+          </div>
+          <div class="full" style="display:flex;gap:10px;margin-top:4px">
+            <button class="primary" onclick="renderConfig()">render config</button>
+            <button onclick="document.getElementById('out').textContent=''">clear</button>
+          </div>
+        </div>
+        <pre class="out" id="out"></pre>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="h-label">Reference</span></div>
+      <div class="panel-body ref">
+        <div class="label" style="margin-bottom:6px">DSCP marking · RFC 4594</div>
+        EF (46) — voice RTP<br>
+        AF41 (34) — video conf<br>
+        CS3 (24) — call signaling<br>
+        <div class="divider" style="margin:10px 0"></div>
+        <div class="label" style="margin-bottom:6px">MOS bands · ITU-T P.800</div>
+        ≥ 4.0 EXCELLENT<br>
+        ≥ 3.6 GOOD<br>
+        ≥ 3.1 ACCEPTABLE<br>
+        &lt; 3.1 POOR / UNACCEPTABLE
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ===========================================================
+ *  Standalone preview — simulates the WebSocket telemetry feed
+ *  with the same data shape as the real backend (api.py).
+ * =========================================================== */
+
+const profiles = [
+  { ssrc:'0xCAFE0001', codec:'PCMU/G.711', baseOWD:60,  loss:0.001, jitter:2.5 },
+  { ssrc:'0xCAFE0002', codec:'PCMU/G.711', baseOWD:120, loss:0.020, jitter:12  },
+  { ssrc:'0xCAFE0003', codec:'PCMU/G.711', baseOWD:200, loss:0.075, jitter:30  },
+];
+
+/* G.107 simplified */
+function Id(Ta){ return Ta<=177.3 ? 0.024*Ta : 0.024*Ta + 0.11*(Ta-177.3); }
+function IeEff(loss){
+  const Ie=0, Bpl=25.1, Ppl=loss*100;
+  if (Ppl<=0) return Ie;
+  return Ie + (95-Ie)*(Ppl/(Ppl+Bpl));
+}
+function rToMos(R){
+  if (R<0) return 1; if (R>100) return 4.5;
+  return 1 + 0.035*R + 7e-6*R*(R-60)*(100-R);
+}
+function band(mos){
+  if (mos>=4.0) return 'EXCELLENT';
+  if (mos>=3.6) return 'GOOD';
+  if (mos>=3.1) return 'ACCEPTABLE';
+  if (mos>=2.6) return 'POOR';
+  return 'UNACCEPTABLE';
+}
+function bandColor(b){
+  return ({EXCELLENT:'var(--green)',GOOD:'var(--green)',
+           ACCEPTABLE:'var(--amber)',POOR:'var(--red)',
+           UNACCEPTABLE:'var(--red)'})[b]||'var(--fg-2)';
+}
+
+function compute(p){
+  const jitter = p.jitter * (0.85 + Math.random()*0.3);
+  const loss   = Math.max(0, p.loss * (0.7 + Math.random()*0.6));
+  const Ta = p.baseOWD + 2*jitter;
+  const R  = Math.max(0, Math.min(100, 93.2 - Id(Ta) - IeEff(loss)));
+  const mos = +rToMos(R).toFixed(2);
+  return {
+    ssrc_hex:p.ssrc, codec:p.codec,
+    one_way_delay_ms: Ta, jitter_ms:jitter, loss_rate:loss,
+    r_factor:+R.toFixed(1), mos, band: band(mos),
+  };
+}
+
+/* ---------- render stream cards ---------- */
+function renderStreams(){
+  const root = document.getElementById('streams');
+  const snaps = profiles.map(compute);
+  root.innerHTML = snaps.map(s => {
+    const c = bandColor(s.band);
+    const pct = Math.max(0,Math.min(100,(s.mos/4.5)*100));
+    return `
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="ssrc">SSRC ${s.ssrc_hex}</div>
+          <div class="codec">${s.codec}</div>
+        </div>
+        <span class="band" style="color:${c}">${s.band}</span>
+      </div>
+      <div class="mos-row">
+        <span class="mos" style="color:${c}">${s.mos.toFixed(2)}</span>
+        <span class="mos-label">MOS<br>R = ${s.r_factor}</span>
+      </div>
+      <div class="bar-fill"><div style="width:${pct}%;background:${c}"></div></div>
+      <div class="metrics">
+        <div class="m">
+          <span class="m-label">Jitter</span>
+          <span class="m-val">${s.jitter_ms.toFixed(1)}<span class="m-unit"> ms</span></span>
+        </div>
+        <div class="m">
+          <span class="m-label">Loss</span>
+          <span class="m-val">${(s.loss_rate*100).toFixed(2)}<span class="m-unit"> %</span></span>
+        </div>
+        <div class="m">
+          <span class="m-label">Delay</span>
+          <span class="m-val">${Math.round(s.one_way_delay_ms)}<span class="m-unit"> ms</span></span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Inject occasional event for the third profile
+  const bad = snaps[2];
+  if (bad.mos < 3.6 && Math.random() < 0.45) {
+    pushEvent({
+      timestamp: new Date().toISOString(),
+      severity: bad.mos > 3.0 ? 'warning' : 'critical',
+      source: 'analyzer',
+      ssrc_hex: bad.ssrc_hex,
+      message: `MOS=${bad.mos} (${bad.band}) jitter=${bad.jitter_ms.toFixed(1)}ms loss=${(bad.loss_rate*100).toFixed(1)}%`,
+    });
+  }
+}
+
+/* ---------- event log ---------- */
+const sevGlyph = { info:'·', warning:'!', critical:'X' };
+const sevColor = { info:'var(--fg-2)', warning:'var(--amber)', critical:'var(--red)' };
+const events = [];
+function pushEvent(e){
+  events.unshift(e);
+  if (events.length > 80) events.pop();
+  renderLog();
+}
+function renderLog(){
+  const root = document.getElementById('log');
+  if (events.length===0){
+    root.innerHTML = '<div style="padding:30px;color:var(--fg-3);text-align:center;font-size:11px">No events yet — system nominal.</div>';
+    return;
+  }
+  root.innerHTML = events.map(e => {
+    const time = (e.timestamp||'').substring(11,19);
+    return `<div class="log-row">
+      <span class="log-ts">${time}</span>
+      <span class="log-glyph" style="color:${sevColor[e.severity]||'var(--fg-2)'}">${sevGlyph[e.severity]||'·'}</span>
+      <span class="log-src">${e.source}${e.ssrc_hex?' '+e.ssrc_hex:''}</span>
+      <span class="log-msg">${e.message}</span>
+    </div>`;
+  }).join('');
+}
+
+/* seed log so it isn't empty */
+['Backend telemetry loop started',
+ 'Analyzer registered SSRC 0xCAFE0001',
+ 'Analyzer registered SSRC 0xCAFE0002',
+ 'Analyzer registered SSRC 0xCAFE0003',
+ 'Vendor adapters loaded: cisco_ios, huawei_vrp']
+.forEach((m,i) => events.push({
+  timestamp:new Date(Date.now()-(5-i)*1000).toISOString(),
+  severity:'info', source:'system', message:m,
+}));
+renderLog();
+
+/* ---------- header clocks ---------- */
+const t0 = Date.now();
+function tick(){
+  const now = new Date();
+  document.getElementById('time').textContent =
+    now.toISOString().substring(11,19) + ' UTC';
+  const up = Math.floor((Date.now()-t0)/1000);
+  const h = String(Math.floor(up/3600)).padStart(2,'0');
+  const m = String(Math.floor((up%3600)/60)).padStart(2,'0');
+  const s = String(up%60).padStart(2,'0');
+  document.getElementById('uptime').textContent = `${h}:${m}:${s}`;
+}
+tick(); setInterval(tick, 1000);
+
+/* ---------- main loop ---------- */
+renderStreams();
+setInterval(renderStreams, 1500);
+
+/* ---------- config render (locally) ---------- */
+const ciscoTemplate = (i,d,v) =>
+`interface ${i}
+ description Phone + PC
+ switchport mode access
+ switchport access vlan ${d}
+ switchport voice vlan ${v}
+ mls qos trust cos
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ no shutdown
+!`;
+const huaweiTemplate = (i,d,v) =>
+`interface ${i}
+ description Phone + PC
+ port link-type access
+ port default vlan ${d}
+ voice-vlan ${v} enable
+ voice-vlan mode auto
+ trust 8021p
+ stp edged-port enable
+ bpdu-protection enable
+ undo shutdown
+#`;
+function renderConfig(){
+  const v = document.getElementById('vendor').value;
+  const i = document.getElementById('iface').value;
+  const d = document.getElementById('dvlan').value;
+  const vv = document.getElementById('vvlan').value;
+  const out = (v==='cisco_ios' ? ciscoTemplate : huaweiTemplate)(i,d,vv);
+  document.getElementById('out').textContent = out;
+  pushEvent({
+    timestamp:new Date().toISOString(), severity:'info', source:'config',
+    message:`Rendered ${v} voice_port for ${i} (data=${d} voice=${vv})`,
+  });
+}
+</script>
+</body>
+</html>
