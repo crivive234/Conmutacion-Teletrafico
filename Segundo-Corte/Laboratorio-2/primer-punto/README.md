@@ -93,6 +93,8 @@ Resultado típico en VirtualBox (dos adaptadores):
 
 ## 2. Topología en GNS3
 
+![Topolgia GNS3](capturas/topologia.png)
+
 ```
                     Admin VM — Debian (VirtualBox)
                    enp0s3    → NAT (internet)
@@ -205,7 +207,8 @@ show vlan brief
 show interfaces trunk
 show running-config
 ```
-
+![VLAN Brief C2960](capturas/VLAN_Brief_2960.png)
+![Trunk C2960](capturas/Interfaces_trunk_2960.png)
 ---
 
 ## 4. Paso 2 — Redes Docker Desktop en Windows
@@ -213,25 +216,13 @@ show running-config
 Abrir **PowerShell como Administrador**.
 
 ```powershell
-# Red Docker para SubRed 1
-docker network create `
-  --driver bridge `
-  --subnet 192.168.56.0/24 `
-  --gateway 192.168.56.1 `
-  --opt "com.docker.network.bridge.name"="br-vlan10" `
-  vlan10_net
-
-# Red Docker para SubRed 2
-docker network create `
-  --driver bridge `
-  --subnet 192.168.147.0/24 `
-  --gateway 192.168.147.1 `
-  --opt "com.docker.network.bridge.name"="br-vlan20" `
-  vlan20_net
+docker network create --driver bridge --subnet 192.168.56.0/24 --gateway 192.168.56.1 --opt "com.docker.network.bridge.name=br-vlan10" vlan10_net
+docker network create --driver bridge --subnet 192.168.147.0/24 --gateway 192.168.147.1 --opt "com.docker.network.bridge.name=br-vlan20" vlan20_net
 
 # Verificar
 docker network ls
 ```
+![Docker Networks](capturas/docker-network-ls.png)
 
 ---
 
@@ -259,17 +250,21 @@ Resultado esperado:
 ### 5.2 Instalación de paquetes
 
 ```bash
-sudo apt update && sudo apt upgrade -y
 
-sudo apt install -y \
-  vlan wireshark tshark iperf3 \
-  zabbix-server-mysql zabbix-frontend-php \
-  zabbix-apache-conf zabbix-sql-scripts zabbix-agent \
-  mariadb-server \
-  pmacct softflowd \
-  snmp snmpd snmp-mibs-downloader \
-  curl gnupg apt-transport-https \
-  net-tools tcpdump
+wget https://repo.zabbix.com/zabbix/6.0/debian/pool/main/z/zabbix-release/zabbix-release_latest+debian12_all.deb
+sudo dpkg -i zabbix-release_latest+debian12_all.deb
+sudo apt update
+
+sudo apt install -y vlan wireshark tshark iperf3 \
+zabbix-server-mysql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts zabbix-agent \
+mariadb-server \
+pmacct softflowd \
+snmp snmpd snmp-mibs-downloader \
+curl gnupg apt-transport-https \
+net-tools tcpdump
+
+#Verificar
+apt policy zabbix-server-mysql
 ```
 
 ### 5.3 Configuración de interfaces de red
@@ -327,6 +322,7 @@ sudo ifup enp0s8.20
 ip addr show enp0s8.10
 ip addr show enp0s8.20
 ```
+![<IP link show Admin-VM](capturas/ip_link_show.png)
 
 ### 5.4 Habilitar IP forwarding (router-on-a-stick)
 
@@ -375,6 +371,7 @@ sudo systemctl restart systemd-networkd
 ip addr show enp0s8
 ping -c 3 192.168.56.1
 ```
+![PING arch-linux to Admin-VM](capturas/ping-arch-linux.png)
 
 Instalar Zabbix Agent e iPerf3:
 ```bash
