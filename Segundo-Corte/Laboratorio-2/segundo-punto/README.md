@@ -387,9 +387,6 @@ sudo apt update && sudo apt install -y iperf3
 
 El script lee el flujo RTSP local, aplica detección de objetos con YOLOv8 y muestra los resultados visualmente en la pantalla del Servidor. También imprime estadísticas de FPS para correlacionar con lo que captura Wireshark en el Monitor.
 
-El código fuente está en el repositorio del docente:
-```
-https://github.com/dialejobv/conmutacion_teletrafico/tree/main/2)%20LABORATORIO
 ```
 
 ### 8.1 Descargar el script
@@ -399,7 +396,7 @@ https://github.com/dialejobv/conmutacion_teletrafico/tree/main/2)%20LABORATORIO
 source ~/yolo_env/bin/activate
 
 wget -O ~/conmutacion.py \
-  "https://raw.githubusercontent.com/dialejobv/conmutacion_teletrafico/main/2)%20LABORATORIO/conmutacion.py"
+  "https://github.com/dialejobv/conmutacion_teletrafico.git"
 ```
 
 ### 8.2 Ejecutar YOLO sobre el flujo RTSP
@@ -469,9 +466,10 @@ Todos los pasos siguientes se realizan en la **VM Cliente Monitor (192.168.1.20)
 
 ### 10.1 Abrir Wireshark y seleccionar la interfaz
 
-1. Abrir Wireshark desde el menú de aplicaciones o ejecutar `wireshark &` en terminal.
+Para este caso los pasos a seguir son los siguientes:
+1. Ejecutar Wireshark en terminal.
 2. En la pantalla de inicio, seleccionar la interfaz **`enp0s8`** (la que tiene tráfico).
-3. Hacer clic en el botón azul de la aleta de tiburón para iniciar la captura.
+3. Iniciar la captura.
 
 ### 10.2 Captura general — filtro por IP del servidor
 
@@ -500,7 +498,6 @@ Se observará la sesión completa de negociación:
 | `PLAY` | Monitor → Servidor | Inicio del stream de video |
 | `TEARDOWN` | Monitor → Servidor | Cierre de la sesión |
 
-> **Captura de pantalla recomendada:** Seleccionar un paquete DESCRIBE y expandir el panel inferior para mostrar el contenido SDP con los parámetros del stream.
 
 ### 10.4 Análisis del protocolo RTP (UDP puertos altos)
 
@@ -560,8 +557,6 @@ Observar:
 3. Unidad: **Bits/s**
 
 Este gráfico permite ver visualmente cómo iPerf3 a 50 Mbps aplasta el tráfico RTP, y cómo al aplicar QoS el video recupera su ancho de banda.
-
-> **Captura de pantalla recomendada:** IO Graph con ambas series activas durante la prueba UDP 50 Mbps.
 
 ### 10.8 Guardar la captura
 
